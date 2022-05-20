@@ -1,0 +1,47 @@
+metadata:
+  name: model-name
+  namespace: cvat
+  annotations:
+    name: Model-Name # displayed name on cvat, models's tab
+    type: detector
+    framework: pytorch
+    spec: |
+      [
+        { "id": 0, "name": "object001" },
+        { "id": 1, "name": "object002" },
+        { "id": 2, "name": "object003" },
+        { "id": 3, "name": "object004" },
+        { "id": 4, "name": "object005" }
+      ]
+spec:
+  description: Model Description # displayed on cvat, models's tab
+  runtime: 'python:3.8'
+  handler: main:handler
+  eventTimeout: 30s
+  build:
+    image: cvat/model-name # container name
+    baseImage: user/model-name:gpu-version # container docker image
+
+    directives:
+      preCopy:
+        - kind: USER
+          value: root
+        - kind: RUN # addition library on container
+          value: apt update
+        - kind: WORKDIR
+          value: /opt/nuclio
+
+  triggers:
+    myHttpTrigger:
+      maxWorkers: 2
+      kind: 'http'
+      workerAvailabilityTimeoutMilliseconds: 10000
+      attributes:
+        maxRequestBodySize: 33554432 # 32MB
+
+  platform:
+    attributes:
+      restartPolicy:
+        name: always
+        maximumRetryCount: 3
+      mountMode: volume
