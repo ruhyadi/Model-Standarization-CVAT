@@ -1,9 +1,8 @@
 
-from io import StringIO
 import os
 import streamlit as st
 import git
-from utils import clone_repo, create_release, upload_assets
+from utils import ModelRegistry
 
 def main():
 
@@ -14,7 +13,7 @@ def main():
     with col01:
         repo_url = st.text_input('Repository (*):', 'https://github.com/ruhyadi/sample-release')
     with col02:
-        token = st.text_input('Token (*):', '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')
+        token = st.text_input('Token (*):', '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')
     with col03:
         branch = st.text_input('Branch (*):', 'main')
     
@@ -32,15 +31,22 @@ def main():
     assets_btn = st.button('Upload Assets')
 
     if assets_btn:
-        clone_repo(repo_url)
+        
+        registry = ModelRegistry(git_url=repo_url, token=token)
+
+        registry.clone_repo()
         st.success(f'Success Clone Repository {repo_url.split("/")[3:5]}')
 
-        upload_url = create_release(release_title, release_tag, branch, release_desc, repo_url, token)
+        upload_url = registry.create_release(release_title, release_tag, branch, release_desc)
         st.success(f'Success Release {release_tag}')
 
         for asset in assets:
+            # save file
             filename = asset.name
-            upload_assets(filename, upload_url, token)
+            with open(os.path.join(os.getcwd(), filename), 'wb') as f:
+                f.write((asset).getbuffer())
+
+            registry.upload_assets(filename, upload_url)
 
 if __name__ == '__main__':
     main()

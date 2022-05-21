@@ -6,32 +6,85 @@ import os
 import json
 import requests
 
-def clone_repo(url, force=True):
-    # https://github.com/ruhyadi/Model-Standarization-CVAT
-    username = url.split('/')[3]
-    reponame = url.split('/')[4]
-    repodir = Path(os.getcwd()) / username / reponame
+class ModelRegistry():
+    def __init__(self, git_url:str , token:str):
+        
+        self.git_url = git_url
+        self.git_token = token
 
-    if not os.path.isdir(repodir):
-        os.makedirs(repodir)
-    elif force:
-        shutil.rmtree(repodir)
-        os.makedirs(repodir)
-    try:
-        repo = git.Repo.clone_from(url, to_path=repodir)
-    except:
-        print('[INFO] Repository already exist')
+        self.username = self.git_url.split('/')[3]
+        self.reponame = self.git_url.split('/')[4]
+        self.repodir = Path(os.getcwd()) / self.username / self.reponame
 
-def create_release(title, tag, branch, desc, git_url, token):
+        self.headers = {
+            "Accept": "application/vnd.github.v3+json",
+            "Authorization": f"token {self.git_token}",
+            # "Content-Type": "image/png"
+            "Content-Type": "application/octet-stream"
+            # "Content-Type": "application/zip"
+        }
 
-    username = git_url.split('/')[3]
-    reponame = git_url.split('/')[4]
+    def clone_repo(self, force=True):
+
+        if not os.path.isdir(self.repodir):
+            os.makedirs(self.repodir)
+        elif force:
+            shutil.rmtree(self.repodir)
+            os.makedirs(self.repodir)
+        repo = git.Repo.clone_from(self.git_url, to_path=self.repodir)
+
+    def create_release(self, title, tag, branch, desc):
+
+        release_dict = {
+            "tag_name":f"{tag}",
+            "target_commitish":f"{branch}",
+            "name":f"{title}",
+            "body":f"{desc}",
+            "draft":False,
+            "prerelease":False,
+            "generate_release_notes":False
+        }
+
+        release_json = json.dumps(release_dict)
+
+        release_response = requests.post(
+            f'https://api.github.com/repos/{self.username}/{self.reponame}/releases',
+            headers=self.headers,
+            data=release_json
+            )
+
+        print(release_response)
+        print(release_response.json())
+
+        return release_response.json()['upload_url']
+
+    def upload_assets(self, filename, upload_url):
+
+        upload_url = upload_url.split('{')[0]
+
+        assets_dict = {
+            "name" : open(filename, 'rb')
+        }
+        #'https://uploads.github.com/repos/ruhyadi/sample-release/releases/66158665/assets'
+        response_assets = requests.post(
+            f'{upload_url}?name={filename}',
+            headers=self.headers,
+            files=assets_dict
+        )
+
+        print(response_assets)
+        print(response_assets.json())
+
+if __name__ == '__main__':
+
+    import requests
+    import json
 
     dict_ = {
-        "tag_name":f"{tag}",
-        "target_commitish":f"{branch}",
-        "name":f"{title}",
-        "body":f"{desc}",
+        "tag_name":"v1.0",
+        "target_commitish":"main",
+        "name":"v1.0",
+        "body":"Sample Release",
         "draft":False,
         "prerelease":False,
         "generate_release_notes":False
@@ -39,90 +92,32 @@ def create_release(title, tag, branch, desc, git_url, token):
 
     headers = {
         "Accept": "application/vnd.github.v3+json",
-        "Authorization": f"token {token}",
+        "Authorization": "token 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",
+        "Content-Type": "application/octet-stream"
     }
 
-    release_json = json.dumps(dict_)
+    # release_json = json.dumps(dict_)
 
-    release = requests.post(
-        f'https://api.github.com/repos/{username}/{reponame}/releases',
-        headers=headers,
-        data=release_json
-        )
+    # release = requests.post(
+    #     'https://api.github.com/repos/ruhyadi/sample-release/releases',
+    #     headers=headers,
+    #     data=release_json
+    #     )
 
-    upload_url = release.json()['upload_url']
-
-    return upload_url
-
-def upload_assets(filename, upload_url, token):
-
-    upload_url_ = upload_url.split('{')[0]
-
-    headers = {
-        "Accept": "application/vnd.github.v3+json",
-        "Authorization": f"token {token}",
-        "Content-Type": "image/png"
-        # "Content-Type": "application/zip"
-    }
-
+    # print(release)
+    # print(release.json()['upload_url'])
+    os.chdir(os.getcwd())
     assets_dict = {
-        "name" : filename,
-        "label" : filename
+        "name" : open('sample011.zip', 'rb')
     }
-    # upload_url_ = 'https://uploads.github.com/repos/ruhyadi/sample-release/releases/66158665/assets'
-    response_assets = requests.post(
-        f'{upload_url_}?name={filename}',
+
+    assets = requests.post(
+        'https://uploads.github.com/repos/ruhyadi/sample-release/releases/67446040/assets?name=sample011.zip',
         headers=headers,
-        data=json.dumps(assets_dict)
+        files=assets_dict
     )
 
-    print(response_assets)
-    print(response_assets.json())
-
-if __name__ == '__main__':
-    pass
-
-    # import requests
-    # import json
-
-    # dict_ = {
-    #     "tag_name":"v1.3",
-    #     "target_commitish":"main",
-    #     "name":"v1.3",
-    #     "body":"Sample Release",
-    #     "draft":False,
-    #     "prerelease":False,
-    #     "generate_release_notes":False
-    # }
-
-    # headers = {
-    #     "Accept": "application/vnd.github.v3+json",
-    #     "Authorization": "token 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",
-    #     "Content-Type": "application/zip"
-    # }
-
-    # # release_json = json.dumps(dict_)
-
-    # # release = requests.post(
-    # #     'https://api.github.com/repos/ruhyadi/sample-release/releases',
-    # #     headers=headers,
-    # #     data=release_json
-    # #     )
-
-    # # print(release)
-    # # print(release.json())
-
-    # assets_dict = {
-    #     "name" : "sample003.zip",
-    #     "label" : "sample003"
-    # }
-
-    # assets = requests.post(
-    #     'https://uploads.github.com/repos/ruhyadi/sample-release/releases/67404165/assets?name=sample003.zip',
-    #     headers=headers,
-    #     data=json.dumps(assets_dict)
-    # )
-
-    # # print(release.json())
-    # print(assets)
-    # print(assets.json())
+    # print(release.json())
+    print(assets)
+    print(assets.json())
+    print(os.getcwd())
