@@ -35,5 +35,15 @@ def custom(imgsize=640, device='cpu'):
     
 if __name__ == '__main__':
 
-    # usage
-    model = torch.hub.load('username/repo:tags', 'custom', device='gpu')
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Torch Hub Testing")
+    parser.add_argument('--repository', type=str, required=True, help='Repository, username/reponame')
+    parser.add_argument('--tag', type=str, required=True, help='Release tag')
+    args = parser.parse_args()
+
+    weights = torch.hub.list(f'{args.repository}:{args.tag}', force_reload=True)
+
+    for weight in weights:
+        model = torch.hub.load(f'{args.repository}:{args.tag}', weight)
+        print(f'[INFO] Success load {weight.upper()}')
